@@ -1,146 +1,117 @@
+import 'dart:developer';
+import 'package:ip_info/keyvalue.dart';
 import 'package:flutter/material.dart';
 import 'constants.dart' as val;
-import 'package:flutter/services.dart';
+import 'package:lottie/lottie.dart';
 import 'internet.dart';
 
 class Home extends StatefulWidget {
-  Home({Key? key}) : super(key: key);
+  const Home({Key? key}) : super(key: key);
 
   @override
   State<Home> createState() => _HomeState();
 }
 
 class _HomeState extends State<Home> {
-  Map<String, dynamic> myInfo = {"country": "null", "query": 589};
+  Map<String, dynamic> myInfo = {};
 
-  void updateMyInfo() async {
+  Future<void> updateMyInfo(BuildContext context) async {
     myInfo = await getInfo();
+    if (myInfo.isEmpty) {
+      const snackBar = SnackBar(content: Text("Failed to refresh Try Again!"));
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    } else {
+      const snackBar = SnackBar(content: Text("Refreshed sucessfully"));
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    updateMyInfo();
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: const Text(
-          "Welcome",
+          "IP INFO",
           style: TextStyle(color: val.pimaryTextColor),
         ),
       ),
       body: Column(
         children: [
           IpAndCountry(
-            ipAddress: myInfo["query"].toString(),
+            ipAddress: myInfo["query"],
             country: myInfo["country"],
           ),
-          ElevatedButton(
-            onPressed: () {
-              updateMyInfo();
-              setState(() {});
-            },
-            child: const Text(
-              "Refresh",
-              style: TextStyle(
-                fontFamily: "Baloo 2",
-                fontSize: 18,
-              ),
-            ),
-            style: ButtonStyle(
-                backgroundColor: MaterialStateProperty.all(val.accentColor),
-                padding: MaterialStateProperty.all(
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 5))),
-          ),
+          myButton(context),
           Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: List.generate(myInfo.length, (index) {
-                  return KeyValues(
-                    item: myInfo.keys.toList()[index],
-                    value: myInfo.values.toList()[index].toString(),
+            child: RefreshIndicator(
+                onRefresh: () async {
+                  updateMyInfo(context).whenComplete(
+                    () {
+                      setState(() {});
+                    },
                   );
-                }),
-              ),
-            ),
+                },
+                child: myInfo.isNotEmpty
+                    ? ListView.builder(
+                        itemBuilder: (BuildContext context, int index) {
+                          log("building with index value $index");
+                          return KeyValues(
+                            item: myInfo.keys.toList()[index],
+                            value: myInfo.values.toList()[index].toString(),
+                          );
+                        },
+                        itemCount: myInfo.length,
+                      )
+                    : CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Center(
+                                  child: Lottie.asset(
+                                      "assets/lottie/pull-down-scroll-down.zip"),
+                                ),
+                                const Center(
+                                  child: Text("Pull down to refresh"),
+                                ),
+                              ],
+                            ),
+                          )
+                        ],
+                      )),
           ),
         ],
       ),
     );
   }
-}
 
-class KeyValues extends StatelessWidget {
-  const KeyValues({
-    Key? key,
-    required this.item,
-    required this.value,
-  }) : super(key: key);
-
-  final String item, value;
-  @override
-  Widget build(BuildContext context) {
+  Padding myButton(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(20.0),
       child: ElevatedButton(
         onPressed: () {
-          Clipboard.setData(ClipboardData(text: item + " : " + value));
+          updateMyInfo(context).whenComplete(
+            () {
+              setState(() {});
+            },
+          );
         },
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Column(
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.max,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    item.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 25,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: "Baloo 2",
-                    ),
-                  ),
-                  const Icon(Icons.copy_all_rounded)
-                ],
-              ),
-              const SizedBox(
-                height: 5,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Text(
-                      value,
-                      textAlign: TextAlign.end,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: "Baloo 2",
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            ],
+        child: const Text(
+          "Refresh",
+          style: TextStyle(
+            fontFamily: "Baloo 2",
+            fontSize: 18,
           ),
         ),
         style: ButtonStyle(
-          backgroundColor: MaterialStateProperty.all(val.accentColor),
-        ),
-      ),
-    );
-  }
-
-  Text textInsideButton({required String text}) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        fontFamily: "Baloo 2",
+            backgroundColor: MaterialStateProperty.all(val.accentColor),
+            padding: MaterialStateProperty.all(
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 5))),
       ),
     );
   }
@@ -149,12 +120,12 @@ class KeyValues extends StatelessWidget {
 class IpAndCountry extends StatefulWidget {
   const IpAndCountry({
     Key? key,
-    required this.ipAddress,
-    required this.country,
+    this.ipAddress,
+    this.country,
   }) : super(key: key);
 
-  final String ipAddress;
-  final String country;
+  final String? ipAddress;
+  final String? country;
 
   @override
   State<IpAndCountry> createState() => _IpAndCountryState();
@@ -177,7 +148,7 @@ class _IpAndCountryState extends State<IpAndCountry> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(
-              widget.ipAddress,
+              widget.ipAddress ?? '_._._._',
               style: myTextStyle,
             ),
           ),
@@ -185,7 +156,7 @@ class _IpAndCountryState extends State<IpAndCountry> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Text(
-            widget.country,
+            widget.country ?? "Refresh to show country",
             style: myTextStyle,
           ),
         ),

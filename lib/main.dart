@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'home.dart';
-import 'constants.dart' as val;
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -11,7 +10,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         scaffoldBackgroundColor: Colors.amber[50],
       ),
-      home:  Home(),
+      home: const Home(),
     );
   }
 }
